@@ -160,7 +160,7 @@ Things I considered but didn't implement (mostly due to time constraints):
 3. **Ensemble**: Train 5 models with different random seeds and average their predictions
 4. **Hybrid Approach**: Use reconstruction error as a feature in a supervised classifier
 
-The VAE would probably give the biggest improvement (~5-10% AUC based on literature.
+The VAE would probably give the biggest improvement (~5-10% AUC) based on literature.
 
 ---
 
