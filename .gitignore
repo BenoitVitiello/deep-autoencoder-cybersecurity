@@ -3,18 +3,26 @@ __pycache__/
 *$py.class
 
 .env
-.venv
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
-.ipynb_checkpoints
+
+.ipynb_checkpoints/
 */.ipynb_checkpoints/*
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data and generated preprocessing artifacts
 data/archive/
 data/raw/
 data/external/
-
 data/interim/
 data/processed/
 *.npy
@@ -22,6 +30,7 @@ data/processed/
 *.pkl
 *.pickle
 
+# Tabular datasets and generated submissions
 *.csv
 *.tsv
 *.parquet
@@ -29,74 +38,21 @@ data/processed/
 *.h5
 *.hdf5
 
+# Model checkpoints
 models/*.pth
 models/*.pt
 *.pth
 *.pt
 *.ckpt
 
+# Logs and local editor files
+*.log
 .DS_Store
 ._*
-
 .vscode/
 .idea/
 
-*.log
-
+# Keep generated result figures visible in the repository
 !results/figures/*.png
 !results/figures/*.jpg
-
-__pycache__/
-*.py[cod]
-*$py.class
-
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-
-.ipynb_checkpoints
-*/.ipynb_checkpoints/*
-
-
-data/archive/
-data/raw/
-data/external/
-data/interim/
-data/processed/
-
-
-*.npy
-*.npz
-*.pkl
-*.pickle
-*.csv
-*.tsv
-*.parquet
-*.feather
-*.h5
-*.hdf5
-
-
-models/*.pth
-models/*.pt
-*.pth
-*.pt
-*.ckpt
-
-
-.DS_Store
-._*
-
-
-.vscode/
-.idea/
-
-
-*.log
-!results/figures/*.png
-!results/figures/*.jpg
+!results/figures/*.jpeg
