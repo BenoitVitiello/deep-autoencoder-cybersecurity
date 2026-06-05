@@ -188,6 +188,14 @@ The highest-impact improvements would be:
 
 ---
 
+## License
+
+This project is licensed under the [Apache License, Version 2.0](LICENSE).
+
+Copyright 2026 Benoit Vitiello.
+
+---
+
 ## Contact
 
 - GitHub: [@BenoitVitiello](https://github.com/BenoitVitiello)
