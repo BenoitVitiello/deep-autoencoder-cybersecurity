@@ -83,6 +83,28 @@ def find_optimal_threshold(y_val, val_errors):
     }
 
 
+def select_threshold_from_validation(val_errors, target_fpr = 0.05):
+    """
+    Select anomaly threshold using only normal validation errors.
+
+    target_fpr=0.05 means the threshold is set at the 95th percentile
+    of normal validation reconstruction errors.
+    """
+    if not 0 < target_fpr < 1:
+        raise ValueError("target_fpr must be between 0 and 1.")
+
+    threshold = np.quantile(val_errors, 1.0 - target_fpr)
+
+    print(f"Validation-calibrated threshold: {threshold:.6f}")
+    print(f"Target validation FPR: {target_fpr:.2%}")
+
+    return {
+        "threshold": threshold,
+        "target_fpr": target_fpr,
+        "calibration_method": "normal_validation_percentile",
+    }
+
+
 def calculate_metrics(y_test, test_errors, threshold):
     """
     Calculate performance metrics on test set
@@ -141,7 +163,7 @@ def plot_roc_curve(fpr, tpr, roc_auc, optimal_idx, optimal_threshold, save_path 
     plt.plot(fpr, tpr, linewidth = 2, label = f'ROC (AUC = {roc_auc:.4f})')
     plt.plot([0, 1], [0, 1], 'k--', linewidth = 1, label = 'Random')
     plt.scatter(fpr[optimal_idx], tpr[optimal_idx], s = 100, c = 'red',
-                marker = 'o', label = f'Optimal (threshold = {optimal_threshold:.3f})')
+                marker = 'o', label = f'Selected (threshold = {optimal_threshold:.3f})')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('ROC Curve', fontweight = 'bold')
@@ -213,6 +235,7 @@ def evaluate_autoencoder(data_dir = '../data/processed',
                         input_dim = 33,
                         latent_dim = 8,
                         batch_size = 256,
+                        target_fpr = 0.05,
                         device = None):
     """
     Complete evaluation pipeline (combines all functions above, standalone use)
@@ -252,18 +275,26 @@ def evaluate_autoencoder(data_dir = '../data/processed',
     print(f"Test Attack :  {test_attack_errors.mean():.6f}")
     print(f"Separation  :  {test_attack_errors.mean() / test_normal_errors.mean():.2f}x")
 
-    #Optimal threshold (using test set which contains both classes)
-    threshold_info = find_optimal_threshold(y_test, test_errors)
+    # Threshold selected only from normal validation data.
+    # This avoids tuning the operating point on the test set.
+    threshold_info = select_threshold_from_validation(
+        val_normal_errors,
+        target_fpr = target_fpr,
+    )
 
-    #Metrics
-    metrics = calculate_metrics(y_test, test_errors, threshold_info['optimal_threshold'])
+    # Metrics on the untouched mixed test set
+    metrics = calculate_metrics(y_test, test_errors, threshold_info["threshold"])
 
     #Confusion matrix
     cm_info = calculate_confusion_matrix(y_test, metrics['y_pred'])
 
     #ROC curve
-    plot_roc_curve(threshold_info['fpr'], threshold_info['tpr'], threshold_info['roc_auc'],
-                threshold_info['optimal_idx'], threshold_info['optimal_threshold'],
+    fpr, tpr, thresholds = roc_curve(y_test, test_errors)
+    roc_auc = roc_auc_score(y_test, test_errors)
+    selected_idx = np.argmin(np.abs(thresholds - threshold_info["threshold"]))
+
+    plot_roc_curve(fpr, tpr, roc_auc,
+                selected_idx, threshold_info["threshold"],
                 f"{results_dir}/roc_curve.png")
 
     #Confusion matrix
@@ -272,12 +303,14 @@ def evaluate_autoencoder(data_dir = '../data/processed',
     #Error distributions
     plot_error_distributions(val_normal_errors,
                             test_normal_errors, test_attack_errors,
-                            threshold_info['optimal_threshold'],
+                            threshold_info["threshold"],
                             f"{results_dir}/error_distributions.png")
 
     #Results
     return {
-        'threshold' : threshold_info['optimal_threshold'],
+        'threshold' : threshold_info["threshold"],
+        'threshold_method' : threshold_info["calibration_method"],
+        'target_validation_fpr' : threshold_info["target_fpr"],
         'accuracy' : metrics['accuracy'],
         'precision' : metrics['precision'],
         'recall' : metrics['recall'],
@@ -300,6 +333,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_dim', type = int, default = 33)
     parser.add_argument('--latent_dim', type = int, default = 8)
     parser.add_argument('--batch_size', type = int, default = 256)
+    parser.add_argument('--target_fpr', type = float, default = 0.05)
     parser.add_argument('--device', type = str, default = None)
     
     args = parser.parse_args()
@@ -311,13 +345,16 @@ if __name__ == '__main__':
         input_dim = args.input_dim,
         latent_dim = args.latent_dim,
         batch_size = args.batch_size,
+        target_fpr = args.target_fpr,
         device = args.device
     )
     
     print("\nKey Metrics :")
-    print(f"Accuracy :  {metrics['accuracy']:.4f}")
-    print(f"Precision : {metrics['precision']:.4f}")
-    print(f"Recall :    {metrics['recall']:.4f}")
-    print(f"F1-Score :  {metrics['f1_score']:.4f}")
-    print(f"ROC-AUC :   {metrics['roc_auc']:.4f}")
+    print(f"Threshold Method : {metrics['threshold_method']}")
+    print(f"Target Val FPR :  {metrics['target_validation_fpr']:.2%}")
+    print(f"Accuracy :        {metrics['accuracy']:.4f}")
+    print(f"Precision :       {metrics['precision']:.4f}")
+    print(f"Recall :          {metrics['recall']:.4f}")
+    print(f"F1-Score :        {metrics['f1_score']:.4f}")
+    print(f"ROC-AUC :         {metrics['roc_auc']:.4f}")
     print(f"\nSeparation Ratio : {metrics['separation_ratio']:.2f}x")
